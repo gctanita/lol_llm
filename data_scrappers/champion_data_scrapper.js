@@ -1,5 +1,6 @@
 const https = require('https');
 const fs = require('fs');
+const path = require('path');
 
 function waitOneSecond() {
     return new Promise((resolve) => {
@@ -138,7 +139,7 @@ function fetchSubsetUntilValue(url, startIndex, stopValue, callback) {
 }
 
 const url = 'https://ddragon.leagueoflegends.com/api/versions.json'; // Replace with your API URL
-const startIndex = 120; // Start from position 0
+const startIndex = 0; // Start from position 0
 let stopValue = '9.17.1'; // Stop at this value
 // let stopValue = '10.2.1'; // Stop at this value
 // let stopValue = '10.10.5'; // Stop at this value
@@ -155,20 +156,67 @@ fetchSubsetUntilValue(url, startIndex, stopValue, (err, subset) => {
         console.log('Extracted Subset:', subset);
 
         subset.forEach((value) => {
-            console.log("Version: " + value);
-            const folderName = 'training-data/champions_' + value;
+            // console.log("Version: " + value);
+            // const folderName = 'training-data/champions_' + value;
 
-            // Create the folder asynchronously
-            fs.mkdir(folderName, { recursive: true }, (err) => {
+            // // Create the folder asynchronously
+            // fs.mkdir(folderName, { recursive: true }, (err) => {
+            //     if (err) {
+            //         return console.error(`Error creating folder: ${err.message}`);
+            //     }
+            //     console.log(`Folder "${folderName}" created successfully!`);
+            // });
+
+            // waitOneSecond();
+            // saveChampionsToVersion(value);
+            // waitOneSecond();
+
+
+            // const folderName = 'training-data/version_' + value;
+
+            // // Create the folder asynchronously
+            // fs.mkdir(folderName, { recursive: true }, (err) => {
+            //     if (err) {
+            //         return console.error(`Error creating folder: ${err.message}`);
+            //     }
+            //     console.log(`Folder "${folderName}" created successfully!`);
+            // });
+
+            const version = value; // Replace with the desired version number
+            const sourceFolder = `training-data/champions_${version}`;
+            const destinationFolder = `training-data/version_${version}/champions`;
+
+            fs.mkdir(destinationFolder, { recursive: true }, (err) => {
                 if (err) {
-                    return console.error(`Error creating folder: ${err.message}`);
+                    console.error(`Error creating destination folder: ${err.message}`);
+                    return;
                 }
-                console.log(`Folder "${folderName}" created successfully!`);
-            });
 
-            waitOneSecond();
-            saveChampionsToVersion(value);
-            waitOneSecond();
+                console.log(`Destination folder "${destinationFolder}" is ready.`);
+
+                // Read files in the source folder
+                fs.readdir(sourceFolder, (err, files) => {
+                    if (err) {
+                        console.error(`Error reading source folder: ${err.message}`);
+                        return;
+                    }
+
+                    // Iterate through each file in the source folder
+                    files.forEach((file) => {
+                        const sourceFilePath = path.join(sourceFolder, file);
+                        const destinationFilePath = path.join(destinationFolder, file);
+
+                        // Move the file
+                        fs.rename(sourceFilePath, destinationFilePath, (err) => {
+                            if (err) {
+                                console.error(`Error moving file "${file}": ${err.message}`);
+                            } else {
+                                console.log(`Moved file "${file}" to "${destinationFilePath}"`);
+                            }
+                        });
+                    });
+                });
+            });
         })
     }
 });
