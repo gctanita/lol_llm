@@ -138,8 +138,8 @@ function fetchSubsetUntilValue(url, startIndex, stopValue, callback) {
 }
 
 const url = 'https://ddragon.leagueoflegends.com/api/versions.json'; // Replace with your API URL
-const startIndex = 30; // Start from position 0
-let stopValue = '13.8.1'; // Stop at this value
+const startIndex = 40; // Start from position 0
+let stopValue = '12.20.1'; // Stop at this value
  //stopValue = '14.12.1'; // ovverride
 
 fetchSubsetUntilValue(url, startIndex, stopValue, (err, subset) => {
