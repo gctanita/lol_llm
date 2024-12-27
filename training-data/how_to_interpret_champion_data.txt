@@ -1,0 +1,78 @@
+Interpreting Spell Text
+Lore, tips, stats, spells, and even recommended items are all part of the data available for every champion. Champion spell tooltips often have placeholders for variables that are signified by double curly brackets. Here are some tips about interpreting these placeholders:
+
+{{ eN }} placeholders
+Placeholders are replaced by the corresponding item in the array given in the effectBurn field. For example, {{ eN }} is a placeholder for spell["effectBurn"]["1"].
+
+/* Amumu's Bandage Toss */
+"tooltip": "Launches a bandage in a direction. If it hits an enemy unit, Amumu pulls himself to them, dealing {{ e1 }} <scaleAP>(+{{ a1 }})</scaleAP> magic damage and stunning for {{ e2 }} second.",
+"effectBurn": [
+  null,
+  "80/130/180/230/280",
+  "1",
+  "1350",
+  ...
+]
+{{ aN }} or {{ fN }} placeholders
+These placeholders are slightly more complicated. Their values can be found in the vars field. First, find the object in the vars array whose key matches the variable. For example, for {{ a1 }}, find the object in the vars array whose key field has the value a1. The value for this variable is the coeff field in that same object.
+
+/* Amumu's Bandage Toss */
+"tooltip": "Launches a bandage in a direction. If it hits an enemy unit, Amumu pulls himself to them, dealing {{ e1 }} <scaleAP>(+{{ a1 }})</scaleAP> magic damage and stunning for {{ e2 }} second.",
+"vars": [
+  {
+    "key": "a1",
+    "link": "spelldamage",
+    "coeff": [
+      0.7
+    ]
+  }
+]
+Under a champions spells there are two fields effect and effectBurn. effect contains an array of an ability's values per level where, in contrast, effectBurn contains a string of all the values at every level. (e.g., "effect": [30,60,90,120,150] vs "effectBurn": "30/60/90/120/150"). You might notice how the effect and effectBurn arrays have a null value in the 0 index. This is because those values are taken from designer-facing files where arrays are 1-based. JSON is 0-based so a null is inserted to make it easier to verify the JSON files are correct.
+
+"effect": [
+  null,
+  [ 120, 150, 180, 210, 240 ],
+  [ 50, 70, 90, 110, 130 ],
+  [ 25, 35, 45, 55, 65 ],
+  [ 0.2, 0.2, 0.2, 0.2, 0.2 ],
+  [ 50, 60, 70, 80, 90 ]
+],
+"effectBurn": [
+  "",
+  "120/150/180/210/240",
+  "50/70/90/110/130",
+  "25/35/45/55/65",
+  "0.2",
+  "50/60/70/80/90"
+]
+Calculating Spell Costs
+In most cases a spell costs mana or energy, you will find those related costs under the cost and costBurn fields. When a spell costs health, the cost will be found in the effect and effectBurn fields. You can determine how to calculate the cost of a spell by looking at the resource field, which should point you to the variable being used to display the cost of a spell.
+
+/* Soraka's Astral Infusion */
+"resource": "10% Max Health, {{ cost }} Mana",
+"cost": [ 20, 25, 30, 35, 40 ],
+"costBurn": "20/25/30/35/40"
+/* Shen's Vorpal Blade */
+"resource": "{{ cost }} Energy",
+"cost": [ 60, 60, 60, 60, 60 ],
+"costBurn": "60"
+/* Dr. Mundo's Infected Cleaver */
+"resource": "{{ e3 }} Health",
+"cost": [ 0, 0, 0, 0, 0 ],
+"costBurn": "0",
+"effect": [
+  null,
+  [ 80, 130, 180, 230, 280 ],
+  [ 15, 18, 21, 23, 25 ],
+  [ 50, 60, 70, 80, 90 ],
+  [ 40, 40, 40, 40, 40 ],
+  [ 2, 2, 2, 2, 2 ]
+],
+"effectBurn": [
+  "",
+  "80/130/180/230/280",
+  "15/18/21/23/25",
+  "50/60/70/80/90",
+  "40",
+  "2"
+]
