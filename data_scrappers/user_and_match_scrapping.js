@@ -40,7 +40,6 @@ function waitBetweenCalls() {
     });
 }
 
-
 function readFirstLine(filePath) {
     return new Promise((resolve, reject) => {
       const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
@@ -203,75 +202,114 @@ async function insertEntry(table, id) {
     }
 }
 
+async function insertEntry(id, url) {
+    try {
+        // Connect to the database
+        const connection = await mysql.createConnection(DB_CONNECTION_DATA);
 
+        // Insert query
+        const query = `
+            INSERT INTO error_log (id, url)
+            VALUES (?, ?);
+        `;
+
+        // Execute the query with matchId and status
+        const [result] = await connection.execute(query, [id, url]);
+
+        console.log(`New error_log entry inserted `);
+
+        // Close the connection
+        await connection.end();
+
+        return result; // Return the auto-generated ID (if applicable)
+    } catch (error) {
+        console.error('Error inserting match entry:', error.message);
+        throw error; // Rethrow the error for further handling
+    }
+}
 
 // Run the function
 (async () => {
     let user = await fetchTopNewEntries();
     while (user !== null) {
+        let currentUrl = "";
         const USER_PUUID = user.id;
-        console.log("We will be obtaining data for " + USER_PUUID);
+        try {            
+            // console.log("We will be obtaining data for " + USER_PUUID);
 
-        await updateStatus(TRACKING_CATEGORY.USER, USER_PUUID, TRACKER_STATUS.IN_PROGRESS);
+            await updateStatus(TRACKING_CATEGORY.USER, USER_PUUID, TRACKER_STATUS.IN_PROGRESS);
 
-        API_KEY = await readFirstLine('sensitive/riot-api-key.txt');
+            API_KEY = await readFirstLine('sensitive/riot-api-key.txt');
 
-        const urlGetAccount = `https://eun1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${USER_PUUID}?api_key=${API_KEY}`;
-        const urlGetChallanges = `https://eun1.api.riotgames.com/lol/challenges/v1/player-data/${USER_PUUID}?api_key=${API_KEY}`;
-        const urlGetChampionMasteries = `https://eun1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${USER_PUUID}?api_key=${API_KEY}`;
-        const urlGetMatchHistory = `https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/${USER_PUUID}/ids?queue=450&start=0&count=100&api_key=${API_KEY}`;
+            const urlGetAccount = `https://eun1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${USER_PUUID}?api_key=${API_KEY}`;
+            const urlGetChallanges = `https://eun1.api.riotgames.com/lol/challenges/v1/player-data/${USER_PUUID}?api_key=${API_KEY}`;
+            const urlGetChampionMasteries = `https://eun1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${USER_PUUID}?api_key=${API_KEY}`;
+            const urlGetMatchHistory = `https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/${USER_PUUID}/ids?queue=450&start=0&count=100&api_key=${API_KEY}`;
 
 
-        console.log("\tStep 1: Get and Save User Account info");
-        await saveToMongoDb(await getFromUrl(urlGetAccount), MONGO_COLLECTIONS.USER_ACCOUNT);
-        await waitBetweenCalls();
-
-        console.log("\tStep 2: Get and Save User Challanges info");
-        await saveToMongoDb(await getFromUrl(urlGetChallanges), MONGO_COLLECTIONS.USER_CHALLENGES);
-        await waitBetweenCalls();
-
-        console.log("\tStep 3: Get and Save User Champion Mastery");
-        const user_champion_masterties = await getFromUrl(urlGetChampionMasteries);
-        const number_of_masteries = user_champion_masterties.length;
-        for (let i = 0; i < number_of_masteries; i++) {
-            await saveToMongoDb(user_champion_masterties[i], MONGO_COLLECTIONS.USER_CHAMPION_MASTERIES);
-        }
-    
-        console.log("\tStep 4: Get Match History and info");
-        const match_history_list = await getFromUrl(urlGetMatchHistory);
-        const number_of_match_history_entries = match_history_list.length;
-        await waitBetweenCalls();
-
-        for (let i = 0; i < number_of_match_history_entries; i++) {
-            const currentMatch =  match_history_list[i];
-
-            const json = {
-                "puuid": USER_PUUID,
-                "match_id": currentMatch
-            };
-            await saveToMongoDb(json, MONGO_COLLECTIONS.USER_MATCH_HISTORY);
-            await insertEntry(TRACKING_CATEGORY.MATCH, currentMatch);
-
-            console.log(`\t\tStep 4.1: Get Match Info for ${currentMatch}`);
-            const urlGetMatchInfo = `https://europe.api.riotgames.com/lol/match/v5/matches/${currentMatch}?api_key=${API_KEY}`;
-            const urlGetMatchTimeline = `https://europe.api.riotgames.com/lol/match/v5/matches/${currentMatch}/timeline?api_key=${API_KEY}`;
-
-            const match_info = await getFromUrl(urlGetMatchInfo);
+            // console.log("\tStep 1: Get and Save User Account info");
+            currentUrl = urlGetAccount;
+            await saveToMongoDb(await getFromUrl(urlGetAccount), MONGO_COLLECTIONS.USER_ACCOUNT);
             await waitBetweenCalls();
-            const participantsList = match_info.metadata.participants;
-            await saveToMongoDb(json, MONGO_COLLECTIONS.MATCH_INFO);
 
-            const noOfParticipants = participantsList.length;
-            for (let j = 0; j < noOfParticipants; j++) {
-                await insertEntry(TRACKING_CATEGORY.USER, participantsList[j]);
+            // console.log("\tStep 2: Get and Save User Challanges info");
+            currentUrl = urlGetChallanges;
+            await saveToMongoDb(await getFromUrl(urlGetChallanges), MONGO_COLLECTIONS.USER_CHALLENGES);
+            await waitBetweenCalls();
+
+            // console.log("\tStep 3: Get and Save User Champion Mastery");
+            currentUrl = urlGetChampionMasteries;
+            const user_champion_masterties = await getFromUrl(urlGetChampionMasteries);
+            const number_of_masteries = user_champion_masterties.length;
+            for (let i = 0; i < number_of_masteries; i++) {
+                await saveToMongoDb(user_champion_masterties[i], MONGO_COLLECTIONS.USER_CHAMPION_MASTERIES);
             }
-
-            console.log(`\t\tStep 4.2: Get Match Timeline for ${currentMatch}`);
-            await saveToMongoDb(await getFromUrl(urlGetMatchTimeline), MONGO_COLLECTIONS.MATCH_TIMELINE);
+        
+            // console.log("\tStep 4: Get Match History and info");
+            currentUrl = urlGetMatchHistory;
+            const match_history_list = await getFromUrl(urlGetMatchHistory);
+            const number_of_match_history_entries = match_history_list.length;
             await waitBetweenCalls();
+
+            for (let i = 0; i < number_of_match_history_entries; i++) {
+                const currentMatch =  match_history_list[i];
+
+                const json = {
+                    "puuid": USER_PUUID,
+                    "match_id": currentMatch
+                };
+                await saveToMongoDb(json, MONGO_COLLECTIONS.USER_MATCH_HISTORY);
+                await insertEntry(TRACKING_CATEGORY.MATCH, currentMatch);
+
+                await updateStatus(TRACKING_CATEGORY.MATCH, currentMatch, TRACKER_STATUS.IN_PROGRESS);
+                // console.log(`\t\tStep 4.1: Get Match Info for ${currentMatch}`);
+                const urlGetMatchInfo = `https://europe.api.riotgames.com/lol/match/v5/matches/${currentMatch}?api_key=${API_KEY}`;
+                const urlGetMatchTimeline = `https://europe.api.riotgames.com/lol/match/v5/matches/${currentMatch}/timeline?api_key=${API_KEY}`;
+
+                currentUrl = urlGetMatchHistory;
+                const match_info = await getFromUrl(urlGetMatchInfo);
+                await waitBetweenCalls();
+                const participantsList = match_info.metadata.participants;
+                await saveToMongoDb(json, MONGO_COLLECTIONS.MATCH_INFO);
+
+                const noOfParticipants = participantsList.length;
+                for (let j = 0; j < noOfParticipants; j++) {
+                    await insertEntry(TRACKING_CATEGORY.USER, participantsList[j]);
+                }
+
+                // console.log(`\t\tStep 4.2: Get Match Timeline for ${currentMatch}`);
+                currentUrl = urlGetMatchTimeline;
+                await saveToMongoDb(await getFromUrl(urlGetMatchTimeline), MONGO_COLLECTIONS.MATCH_TIMELINE);
+                await updateStatus(TRACKING_CATEGORY.MATCH, currentMatch, TRACKER_STATUS.DONE);
+                await waitBetweenCalls();
+            }
+            await updateStatus(TRACKING_CATEGORY.USER, USER_PUUID, TRACKER_STATUS.DONE);
+            // console.log(`~~~ JOB DONE USER ${USER_PUUID}~~~`);
+            
+        } catch (exception) {
+            insertEntry(USER_PUUID, currentUrl)
         }
-        console.log(`~~~ JOB DONE USER ${USER_PUUID}~~~`);
         user = await fetchTopNewEntries();
     }
-    console.log("~~~ JOB DONE ~~~");
+    // console.log("~~~ JOB DONE ~~~");
 })();
